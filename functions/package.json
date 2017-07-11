@@ -1,9 +1,13 @@
 {
   "name": "functions",
   "description": "Cloud Functions for Firebase",
-  "dependencies": {
+   "dependencies": {
+    "actions-on-google": "^1.0.0",
     "firebase-admin": "~4.2.1",
     "firebase-functions": "^0.5.7"
+  },
+  "devDependencies": {
+    "semistandard": "^9.1.0"
   },
   "private": true
 }

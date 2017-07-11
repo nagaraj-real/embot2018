@@ -14,7 +14,7 @@
             "name": "Attach Function",
             "type": "node",
             "request": "attach",
-            "port": 5002
+            "port": 5858
         }
     ]
 }
