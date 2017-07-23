@@ -1,12 +1,42 @@
 'use strict';
 
 const ORDER_LUNCH = 'order.lunch';
+const SELECT_LUNCH = 'select.lunch';
+const ORDER_LUNCH_SELECT_CONFIRM = 'orderlunch.select.confirm';
 
 const FOOD_SELECTED = 'thinking about lunch ah?';
 
 const App = require('actions-on-google').ApiAiApp;
 
 const functions = require('firebase-functions');
+
+const LUNCH_VALUES=[
+  {
+    key:'CHICKEN_BIRIYANI',
+    value:'Chicken Biriyani',
+    cost:100
+  },
+  {
+    key:'CHAPATI_CHICKEN',
+    value:'Chapati Chicken Combo',
+    cost:75
+  },
+  {
+    key:'NON_VEG_THALI',
+    value:'Non Veg Thali',
+    cost:110
+  },
+  {
+    key:'VEG_BIRIYANI',
+    value:'Veg Biriyani',
+    cost:90
+  },
+  {
+    key:'VEG_THALI',
+    value:'Veg Thali',
+    cost:100
+  }
+]
 
 const LUNCH_IMAGES = [
   [
@@ -36,12 +66,20 @@ function getRandomImage(images) {
   return images[randomIndex];
 }
 
+function getLunchItem(key){
+  var filtered = LUNCH_VALUES.filter(function(item){
+      return item.key===key;
+  });
+  return filtered;
+}
 
-exports.embothook = functions.https.onRequest((request, response) => {
+//functions.https.onRequest()
+
+exports.embothook = (request, response) => {
   const app = new App({ request, response });
   console.log('Request headers: ' + JSON.stringify(request.headers));
   console.log('Request body: ' + JSON.stringify(request.body));
-
+  app.setContext('order_lunch-followup');
   function orderlunch(app) {
     var lunchimage = LUNCH_IMAGES;
     app.askWithList(app.buildRichResponse()
@@ -84,10 +122,19 @@ exports.embothook = functions.https.onRequest((request, response) => {
     );
   }
 
+  function selectlunch(app) {
+    var quantity = app.getArgument('Quantity');
+    var Lunch = app.getArgument('Lunch');
+    app.ask('Gotcha!! '+ getLunchItem(Lunch)[0].value +' - '+quantity+' plates coming right away' );
+  }
+
+
+
   let actionMap = new Map();
   //actionMap.set(UNRECOGNIZED_DEEP_LINK, unhandledDeepLinks);
   actionMap.set(ORDER_LUNCH, orderlunch);
-  //actionMap.set(TELL_CAT_FACT, tellCatFact);
+  actionMap.set(SELECT_LUNCH, selectlunch);
+  actionMap.set(ORDER_LUNCH_SELECT_CONFIRM, selectlunch);
   app.handleRequest(actionMap);
 
-});
+};
