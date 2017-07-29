@@ -1,0 +1,37 @@
+[
+    {
+        "key": "CHICKEN_BIRIYANI",
+        "value": "Chicken Biriyani",
+        "cost": 100,
+        "description": "Hyderabad chicken biriyani at 100 Rs",
+        "imageurl": "https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/lunch_top_dishes%2Fchicken-biriyani.png?alt=media&token=02946867-48f1-4796-845e-62616d594940"
+    },
+    {
+        "key": "CHAPATI_CHICKEN",
+        "value": "Chapati Chicken Combo",
+        "cost": 75,
+        "description": "3 chapatis with hot chicken gravy at 75 Rs",
+        "imageurl": "https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/lunch_top_dishes%2Fchapathi-chicken.jpg?alt=media&token=170f3475-b98d-4c9a-88d1-b15d5bb7a38c"
+    },
+    {
+        "key": "NON_VEG_THALI",
+        "value": "Non Veg Thali",
+        "cost": 110,
+        "description": "Non-Veg thali with 4 Non Veg dishes at 110 Rs",
+        "imageurl": "https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/lunch_top_dishes%2FNon-Veg-Thali.png?alt=media&token=ec3b5b1e-351c-49fe-827f-f3fa1887c57b"
+    },
+    {
+        "key": "VEG_BIRIYANI",
+        "value": "Veg Biriyani",
+        "cost": 90,
+        "description": "Spicy Veg Biriyani at 90Rs",
+        "imageurl": "https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/lunch_top_dishes%2Fveg-biryani.png?alt=media&token=dc2f77f4-5f65-4baa-8245-884015c0ad34"
+    },
+    {
+        "key": "VEG_THALI",
+        "value": "Veg Thali",
+        "cost": 100,
+        "description": "Veg thali with 3 Veg dishes and payasam at 100 Rs",
+        "imageurl": "https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/lunch_top_dishes%2FVeg_Thali.png?alt=media&token=9a0926d3-dc39-4594-b820-175bda7eaf34"
+    }
+]
