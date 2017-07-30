@@ -7,6 +7,8 @@ const TRANSACTION_CHECK_COMPLETE = 'transaction.check.complete';
 const TRANSACTION_DECISION_COMPLETE = 'transaction.decision.complete';
 const CART_CHANGE_REQUESTED = 'CART_CHANGE_REQUESTED';
 const ADD_MORE_CONFIRM = 'add.more.confirm';
+const PERMISSION_GRANTED = 'permission.granted';
+const INPUT_WELCOME = 'input.welcome';
 
 const FOOD_SELECTED = 'thinking about lunch ah?';
 
@@ -18,14 +20,14 @@ let lunchvalues = [];
 
 const firebase = require("firebase");
 
-var config = {
+let config = {
   apiKey: "AIzaSyAXzRU0nDru3KS8PxBBB8OR60pqHhFu4No",
   authDomain: "embot-5c0ae.firebaseapp.com",
   databaseURL: "https://embot-5c0ae.firebaseio.com/",
   storageBucket: "gs://embot-5c0ae.appspot.com",
 };
 
-var orderItems={
+let orderItems = {
 
 }
 
@@ -40,30 +42,32 @@ database.ref('lunchitems').once('value').then(function (snapshot) {
 });
 
 function getLunchItem(key) {
-   return lunchvalues[key];
+  return lunchvalues[key];
 }
 
 function saveOrder(app) {
 
-  var currdate = new Date();
-
-  var orderData = {
+  let currdate = new Date();
+  let user = {};
+  user[app.data.userId] = app.data.userId;
+  let orderData = {
     orderId: app.data.orderId,
-    date:currdate,
-    status:'pending',
-    tax:app.data.tax,
-    totalcost:app.data.totalcost,
-    users:{1:{id:1}},
-    lunchitems:app.data.foodItems
+    date: currdate,
+    status: 'pending',
+    tax: app.data.tax,
+    totalcost: app.data.totalcost,
+    users: user,
+    lunchitems: app.data.foodItems,
+    coordinates: app.data.deviceCoordinates
   };
 
-  var updates = {};
+  let updates = {};
   updates['/lunchorders/' + app.data.orderId] = orderData;
 
 
-  database.ref().update(updates).then((msg)=>{
+  database.ref().update(updates).then((msg) => {
     console.log(msg);
-  },(error)=>{
+  }, (error) => {
     console.log(error);
   });;
 }
@@ -74,6 +78,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
   app.data.foodItems = {};
   console.log('Request headers: ' + JSON.stringify(request.headers));
   console.log('Request body: ' + JSON.stringify(request.body));
+
   function orderlunch(app, addmore) {
     let text = 'Alright what are you in the mood for?'
     if (addmore) {
@@ -81,7 +86,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
     }
     let buildlist = app.buildList('Most popular choices');
     Object.keys(lunchvalues).forEach(function (key) {
-      var item=lunchvalues[key];
+      let item = lunchvalues[key];
       buildlist.addItems(app.buildOptionItem(item.key,
         [item.value])
         .setTitle(item.value)
@@ -95,14 +100,14 @@ exports.embothook = functions.https.onRequest((request, response) => {
   }
 
   function selectlunch(app) {
-    var quantity = app.getArgument('Quantity');
-    var lunch = app.getArgument('Lunch');
-    var lunchItem = getLunchItem(lunch);
-    lunchItem.quantity=quantity;
-    if(app.data.foodItems[lunch]){
-      app.data.foodItems[lunch].quantity =parseInt(app.data.foodItems[lunch].quantity) + parseInt(lunchItem.quantity);
-    }else{
-    app.data.foodItems[lunch]=lunchItem
+    let quantity = app.getArgument('Quantity');
+    let lunch = app.getArgument('Lunch');
+    let lunchItem = getLunchItem(lunch);
+    lunchItem.quantity = quantity;
+    if (app.data.foodItems[lunch]) {
+      app.data.foodItems[lunch].quantity = parseInt(app.data.foodItems[lunch].quantity) + parseInt(lunchItem.quantity);
+    } else {
+      app.data.foodItems[lunch] = lunchItem
     }
 
     app.askForConfirmation('add more items?');
@@ -110,9 +115,9 @@ exports.embothook = functions.https.onRequest((request, response) => {
   }
 
   function transactionDecision(app) {
-    var buildItems = [];
-    var subtotal = 0;
-    var tax = 5;
+    let buildItems = [];
+    let subtotal = 0;
+    let tax = 5;
     Object.keys(app.data.foodItems).forEach(function (key) {
       let foodItem = app.data.foodItems[key];
       buildItems.push(app.buildLineItem(foodItem.value, foodItem.value)
@@ -120,8 +125,8 @@ exports.embothook = functions.https.onRequest((request, response) => {
         .setQuantity(foodItem.quantity))
       subtotal = subtotal + (foodItem.quantity * foodItem.cost);
     })
-    app.data.totalcost=subtotal;
-    app.data.tax=tax;
+    app.data.totalcost = subtotal;
+    app.data.tax = tax;
     app.data.orderId = firebase.database().ref().child('lunchorders').push().key;
     let order = app.buildOrder(app.data.orderId)
       .setCart(app.buildCart().setMerchant('Carnival FC', 'Carnival FC')
@@ -164,16 +169,20 @@ exports.embothook = functions.https.onRequest((request, response) => {
     if (app.getTransactionDecision() &&
       app.getTransactionDecision().userDecision ===
       app.Transactions.ConfirmationDecision.ACCEPTED) {
-      saveOrder(app); 
+      saveOrder(app);
       let googleOrderId = app.getTransactionDecision().order.googleOrderId;
-
-      app.tell(app.buildRichResponse().addOrderUpdate(
-        app.buildOrderUpdate(googleOrderId, true)
-          .setOrderState(app.Transactions.OrderState.CREATED, 'Order created')
-          .setInfo(app.Transactions.OrderStateInfo.RECEIPT, {
-            confirmedActionOrderId: app.data.orderId
-          }))
-        .addSimpleResponse('Transaction completed! You\'re all set!'));
+      if (googleOrderId) {
+        app.tell(app.buildRichResponse().addOrderUpdate(
+          app.buildOrderUpdate(googleOrderId, true)
+            .setOrderState(app.Transactions.OrderState.CREATED, 'Order created')
+            .setInfo(app.Transactions.OrderStateInfo.RECEIPT, {
+              confirmedActionOrderId: app.data.orderId
+            }))
+          .addSimpleResponse('Transaction completed! You\'re all set!'));
+      }
+      else {
+        app.tell('Transaction completed! You\'re all set!')
+      }
     } else if (app.getTransactionDecision() &&
       app.getTransactionDecision().userDecision ===
       app.Transactions.ConfirmationDecision.CART_CHANGE_REQUESTED) {
@@ -191,8 +200,35 @@ exports.embothook = functions.https.onRequest((request, response) => {
     }
   }
 
+  function inputwelcome(app) {
+    let namePermission = app.SupportedPermissions.NAME;
+    let preciseLocationPermission = app.SupportedPermissions.DEVICE_PRECISE_LOCATION
+    app.askForPermissions('To address you by name and know your location',
+      [namePermission, preciseLocationPermission]);
+  }
+
+  function permgranted(app) {
+    if (app.isPermissionGranted()) {
+      app.data.displayName = app.getUserName().givenName;
+      app.data.userId = app.getUser().userId;
+      app.data.deviceCoordinates = app.getDeviceLocation().coordinates;
+
+      app.ask(app.buildRichResponse()
+        .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, ['Hi ${app.data.displayName} welcome !!'])
+        .addSuggestions(
+        ['Book Lunch', 'Process Visa', 'Leave Management', 'True time'])
+      );
+    } else {
+      app.tell('Ok Bye')
+    }
+
+
+  }
+
 
   let actionMap = new Map();
+  actionMap.set(INPUT_WELCOME, inputwelcome);
+  actionMap.set(PERMISSION_GRANTED, permgranted);
   actionMap.set(ORDER_LUNCH, orderlunch);
   actionMap.set(SELECT_LUNCH, selectlunch);
   actionMap.set(ORDER_LUNCH_SELECT_CONFIRM, selectlunch);
