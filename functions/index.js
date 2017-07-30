@@ -53,7 +53,8 @@ function saveOrder(app) {
     status:'pending',
     tax:app.data.tax,
     totalcost:app.data.totalcost,
-    foodItems:app.data.foodItems
+    users:{1:{id:1}},
+    lunchitems:app.data.foodItems
   };
 
   var updates = {};
@@ -70,7 +71,7 @@ function saveOrder(app) {
 exports.embothook = functions.https.onRequest((request, response) => {
 
   const app = new App({ request, response });
-  app.data.foodItems = [];
+  app.data.foodItems = {};
   console.log('Request headers: ' + JSON.stringify(request.headers));
   console.log('Request body: ' + JSON.stringify(request.body));
   function orderlunch(app, addmore) {
@@ -98,7 +99,11 @@ exports.embothook = functions.https.onRequest((request, response) => {
     var lunch = app.getArgument('Lunch');
     var lunchItem = getLunchItem(lunch);
     lunchItem.quantity=quantity;
-    app.data.foodItems.push(lunchItem);
+    if(app.data.foodItems[lunch]){
+      app.data.foodItems[lunch].quantity =parseInt(app.data.foodItems[lunch].quantity) + parseInt(lunchItem.quantity);
+    }else{
+    app.data.foodItems[lunch]=lunchItem
+    }
 
     app.askForConfirmation('add more items?');
 
@@ -108,7 +113,8 @@ exports.embothook = functions.https.onRequest((request, response) => {
     var buildItems = [];
     var subtotal = 0;
     var tax = 5;
-    app.data.foodItems.forEach(function (foodItem) {
+    Object.keys(app.data.foodItems).forEach(function (key) {
+      let foodItem = app.data.foodItems[key];
       buildItems.push(app.buildLineItem(foodItem.value, foodItem.value)
         .setPrice(app.Transactions.PriceType.ACTUAL, 'INR', (foodItem.quantity * foodItem.cost))
         .setQuantity(foodItem.quantity))
