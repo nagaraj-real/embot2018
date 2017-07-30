@@ -25,21 +25,46 @@ var config = {
   storageBucket: "gs://embot-5c0ae.appspot.com",
 };
 
+var orderItems={
+
+}
+
 firebase.initializeApp(config);
 
 const database = firebase.database();
 
-database.ref('lunchitem').once('value').then(function (snapshot) {
+database.ref('lunchitems').once('value').then(function (snapshot) {
   lunchvalues = snapshot.val();
 }, function (err) {
   console.log(err);
 });
 
 function getLunchItem(key) {
-  var filtered = lunchvalues.filter(function (item) {
-    return item.key === key;
-  });
-  return filtered;
+   return lunchvalues[key];
+}
+
+function saveOrder(app) {
+
+  var currdate = new Date();
+
+  var orderData = {
+    orderId: app.data.orderId,
+    date:currdate,
+    status:'pending',
+    tax:app.data.tax,
+    totalcost:app.data.totalcost,
+    foodItems:app.data.foodItems
+  };
+
+  var updates = {};
+  updates['/lunchorders/' + app.data.orderId] = orderData;
+
+
+  database.ref().update(updates).then((msg)=>{
+    console.log(msg);
+  },(error)=>{
+    console.log(error);
+  });;
 }
 
 exports.embothook = functions.https.onRequest((request, response) => {
@@ -54,7 +79,8 @@ exports.embothook = functions.https.onRequest((request, response) => {
       text = 'All right!! which dish you would like to add'
     }
     let buildlist = app.buildList('Most popular choices');
-    lunchvalues.forEach(function (item) {
+    Object.keys(lunchvalues).forEach(function (key) {
+      var item=lunchvalues[key];
       buildlist.addItems(app.buildOptionItem(item.key,
         [item.value])
         .setTitle(item.value)
@@ -70,15 +96,9 @@ exports.embothook = functions.https.onRequest((request, response) => {
   function selectlunch(app) {
     var quantity = app.getArgument('Quantity');
     var lunch = app.getArgument('Lunch');
-    var lunchItem = getLunchItem(lunch)[0];
-    var selectedLunch = lunchItem.value;
-    var selectedQuantity = quantity;
-    var selectedCost = quantity * lunchItem.cost;
-
-    app.data.foodItems.push({
-      'selectedLunch': selectedLunch,
-      'selectedQuantity': selectedQuantity, 'selectedCost': selectedCost
-    });
+    var lunchItem = getLunchItem(lunch);
+    lunchItem.quantity=quantity;
+    app.data.foodItems.push(lunchItem);
 
     app.askForConfirmation('add more items?');
 
@@ -89,12 +109,15 @@ exports.embothook = functions.https.onRequest((request, response) => {
     var subtotal = 0;
     var tax = 5;
     app.data.foodItems.forEach(function (foodItem) {
-      buildItems.push(app.buildLineItem(foodItem.selectedLunch, foodItem.selectedLunch)
-        .setPrice(app.Transactions.PriceType.ACTUAL, 'INR', foodItem.selectedCost)
-        .setQuantity(foodItem.selectedQuantity))
-      subtotal = subtotal + foodItem.selectedCost;
+      buildItems.push(app.buildLineItem(foodItem.value, foodItem.value)
+        .setPrice(app.Transactions.PriceType.ACTUAL, 'INR', (foodItem.quantity * foodItem.cost))
+        .setQuantity(foodItem.quantity))
+      subtotal = subtotal + (foodItem.quantity * foodItem.cost);
     })
-    let order = app.buildOrder('321450')
+    app.data.totalcost=subtotal;
+    app.data.tax=tax;
+    app.data.orderId = firebase.database().ref().child('lunchorders').push().key;
+    let order = app.buildOrder(app.data.orderId)
       .setCart(app.buildCart().setMerchant('Carnival FC', 'Carnival FC')
         .addLineItems(buildItems).setNotes('Lunch Items'))
       .addOtherItems([
@@ -135,13 +158,14 @@ exports.embothook = functions.https.onRequest((request, response) => {
     if (app.getTransactionDecision() &&
       app.getTransactionDecision().userDecision ===
       app.Transactions.ConfirmationDecision.ACCEPTED) {
+      saveOrder(app); 
       let googleOrderId = app.getTransactionDecision().order.googleOrderId;
 
       app.tell(app.buildRichResponse().addOrderUpdate(
         app.buildOrderUpdate(googleOrderId, true)
           .setOrderState(app.Transactions.OrderState.CREATED, 'Order created')
           .setInfo(app.Transactions.OrderStateInfo.RECEIPT, {
-            confirmedActionOrderId: '321450'
+            confirmedActionOrderId: app.data.orderId
           }))
         .addSimpleResponse('Transaction completed! You\'re all set!'));
     } else if (app.getTransactionDecision() &&
