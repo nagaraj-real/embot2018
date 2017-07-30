@@ -51,22 +51,23 @@ function saveOrder(app) {
   let user = {};
   user[app.data.userId] = app.data.userId;
   let orderData = {
-    orderId: app.data.orderId,
+    orderId: app.data.lunchdata.orderId,
     date: currdate,
     status: 'pending',
-    tax: app.data.tax,
-    totalcost: app.data.totalcost,
+    tax: app.data.lunchdata.tax,
+    totalcost: app.data.lunchdata.totalcost,
     users: user,
-    lunchitems: app.data.foodItems,
+    lunchitems: app.data.lunchdata.foodItems,
     coordinates: app.data.deviceCoordinates
   };
 
   let updates = {};
-  updates['/lunchorders/' + app.data.orderId] = orderData;
+  updates['/lunchorders/' + app.data.lunchdata.orderId] = orderData;
 
-
+  
   database.ref().update(updates).then((msg) => {
     console.log(msg);
+    app.data.lunchdata = {};
   }, (error) => {
     console.log(error);
   });;
@@ -75,7 +76,8 @@ function saveOrder(app) {
 exports.embothook = functions.https.onRequest((request, response) => {
 
   const app = new App({ request, response });
-  app.data.foodItems = {};
+  app.data.lunchdata={};
+  app.data.lunchdata.foodItems = {};
   console.log('Request headers: ' + JSON.stringify(request.headers));
   console.log('Request body: ' + JSON.stringify(request.body));
 
@@ -104,10 +106,10 @@ exports.embothook = functions.https.onRequest((request, response) => {
     let lunch = app.getArgument('Lunch');
     let lunchItem = getLunchItem(lunch);
     lunchItem.quantity = quantity;
-    if (app.data.foodItems[lunch]) {
-      app.data.foodItems[lunch].quantity = parseInt(app.data.foodItems[lunch].quantity) + parseInt(lunchItem.quantity);
+    if (app.data.lunchdata.foodItems[lunch]) {
+      app.data.lunchdata.foodItems[lunch].quantity = parseInt(app.data.lunchdata.foodItems[lunch].quantity) + parseInt(lunchItem.quantity);
     } else {
-      app.data.foodItems[lunch] = lunchItem
+      app.data.lunchdata.foodItems[lunch] = lunchItem
     }
 
     app.askForConfirmation('add more items?');
@@ -118,17 +120,17 @@ exports.embothook = functions.https.onRequest((request, response) => {
     let buildItems = [];
     let subtotal = 0;
     let tax = 5;
-    Object.keys(app.data.foodItems).forEach(function (key) {
-      let foodItem = app.data.foodItems[key];
+    Object.keys(app.data.lunchdata.foodItems).forEach(function (key) {
+      let foodItem = app.data.lunchdata.foodItems[key];
       buildItems.push(app.buildLineItem(foodItem.value, foodItem.value)
         .setPrice(app.Transactions.PriceType.ACTUAL, 'INR', (foodItem.quantity * foodItem.cost))
         .setQuantity(foodItem.quantity))
       subtotal = subtotal + (foodItem.quantity * foodItem.cost);
     })
-    app.data.totalcost = subtotal;
-    app.data.tax = tax;
-    app.data.orderId = firebase.database().ref().child('lunchorders').push().key;
-    let order = app.buildOrder(app.data.orderId)
+    app.data.lunchdata.totalcost = subtotal;
+    app.data.lunchdata.tax = tax;
+    app.data.lunchdata.orderId = firebase.database().ref().child('lunchorders').push().key;
+    let order = app.buildOrder(app.data.lunchdata.orderId)
       .setCart(app.buildCart().setMerchant('Carnival FC', 'Carnival FC')
         .addLineItems(buildItems).setNotes('Lunch Items'))
       .addOtherItems([
@@ -176,7 +178,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
           app.buildOrderUpdate(googleOrderId, true)
             .setOrderState(app.Transactions.OrderState.CREATED, 'Order created')
             .setInfo(app.Transactions.OrderStateInfo.RECEIPT, {
-              confirmedActionOrderId: app.data.orderId
+              confirmedActionOrderId: app.data.lunchdata.orderId
             }))
           .addSimpleResponse('Transaction completed! You\'re all set!'));
       }
@@ -214,7 +216,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
       app.data.deviceCoordinates = app.getDeviceLocation().coordinates;
 
       app.ask(app.buildRichResponse()
-        .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, ['Hi ${app.data.displayName} welcome !!'])
+        .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
         .addSuggestions(
         ['Book Lunch', 'Process Visa', 'Leave Management', 'True time'])
       );
