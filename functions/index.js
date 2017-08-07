@@ -9,6 +9,10 @@ const CART_CHANGE_REQUESTED = 'CART_CHANGE_REQUESTED';
 const ADD_MORE_CONFIRM = 'add.more.confirm';
 const PERMISSION_GRANTED = 'permission.granted';
 const INPUT_WELCOME = 'input.welcome';
+const ONBOARDING_BEGIN = 'onboarding.begin';
+const ONBOARDING_BASICDETAILS = 'onboarding.basicinfo';
+const ONBOARDING_COMPANYDETAILS = 'onboarding.companydetails';
+const ONBOARDING_CHANGE = 'onboarding.begin.change';
 
 const FOOD_SELECTED = 'thinking about lunch ah?';
 
@@ -17,6 +21,8 @@ const App = require('actions-on-google').ApiAiApp;
 const functions = require('firebase-functions');
 
 let lunchvalues = [];
+
+let users = [];
 
 const firebase = require("firebase");
 
@@ -33,13 +39,25 @@ let orderItems = {
 
 firebase.initializeApp(config);
 
+
+
 const database = firebase.database();
+
 
 database.ref('lunchitems').once('value').then(function (snapshot) {
   lunchvalues = snapshot.val();
 }, function (err) {
   console.log(err);
 });
+
+
+database.ref('users').orderByChild("emailid").equalTo("raj.nagaraj1990@gmail.com").once('value').then(function (snapshot) {
+  users = snapshot.val();
+}, function (err) {
+  console.log(err);
+});
+
+
 
 function getLunchItem(key) {
   return lunchvalues[key];
@@ -64,7 +82,7 @@ function saveOrder(app) {
   let updates = {};
   updates['/lunchorders/' + app.data.lunchdata.orderId] = orderData;
 
-  
+
   database.ref().update(updates).then((msg) => {
     console.log(msg);
     app.data.lunchdata = {};
@@ -75,9 +93,12 @@ function saveOrder(app) {
 
 exports.embothook = functions.https.onRequest((request, response) => {
 
+
   const app = new App({ request, response });
-  app.data.lunchdata={};
+  app.data.lunchdata = {};
   app.data.lunchdata.foodItems = {};
+  app.data.user = {};
+  app.data.user.key = Object.keys(users)[0];
   console.log('Request headers: ' + JSON.stringify(request.headers));
   console.log('Request body: ' + JSON.stringify(request.body));
 
@@ -218,7 +239,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
       app.ask(app.buildRichResponse()
         .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
         .addSuggestions(
-        ['Book Lunch', 'Process Visa', 'Leave Management', 'True time'])
+        ['Book Lunch', 'Onboarding', 'Leave Management', 'True time'])
       );
     } else {
       app.tell('Ok Bye')
@@ -226,6 +247,113 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
 
   }
+
+  function onBoardingBegin(app) {
+
+    if (users[app.data.user.key].status === 'UPLOAD') {
+      app.data.user.basicinfo = users[app.data.user.key].basicinfo;
+      app.data.user.companydetails = users[app.data.user.key].companydetails;
+      app.ask(app.buildRichResponse()
+        .addSimpleResponse('You need to upload documents to proceed.Please come back after uploading to check the status')
+        .addBasicCard(app.buildBasicCard(`
+    **Name** : ${app.data.user.basicinfo.givenname}    
+    **Phonennumber** : ${app.data.user.basicinfo.phonennumber}  
+    **Address** : ${app.data.user.basicinfo.address}  
+    **Date of Birth** : ${app.data.user.basicinfo.dob}    
+    **Current Company** : ${app.data.user.companydetails.companyname}     
+    **Current CTC** : ${app.data.user.companydetails.currentctc.amount} ${app.data.user.companydetails.currentctc.currency}  
+    **Expected CTC** : ${app.data.user.companydetails.expectedctc.amount} ${app.data.user.companydetails.expectedctc.currency}  
+    **Experience** : ${app.data.user.companydetails.experience} years   
+    **Skills** : ${app.data.user.companydetails.skills.toString()} 
+        `)
+          .setTitle('Profile')
+          .addButton('Upload the documents here')
+          .setImage(users[app.data.user.key].imageurl, 'Image alternate text')
+        ).addSuggestions(
+        ['change something', 'ok bye'])
+      );
+           
+    
+    } else {
+
+      app.ask(`Hi ${app.data.displayName},welcome to cognizant family.I will help you with your on boarding process.Please provide your full name`);
+
+    }
+
+
+  }
+
+  function onBaoardingBasicInfo(app) {
+    let basicinfo = {};
+    basicinfo.address = app.getArgument('address');
+    basicinfo.phonennumber = app.getArgument('phonenumber');
+    basicinfo.givenname = app.getArgument('given-name');
+    basicinfo.dob = app.getArgument('dob');
+
+    app.data.user.basicinfo = basicinfo;
+    let updates = {};
+    updates['/users/' + app.data.user.key + '/basicinfo'] = basicinfo;
+
+
+    database.ref().update(updates).then((msg) => {
+      console.log(msg);
+    }, (error) => {
+      console.log(error);
+    });;
+
+
+    app.ask(`Now that we have your basic information,let us have more information about your organization.What is the current organization you are working for?`);
+    //app.setContext('onboarding_basicinfo-followup ');
+
+  }
+
+  function onBaoardingCompanyDetails(app) {
+    let companydetails = {};
+    companydetails.currentctc = app.getArgument('currentctc');
+    companydetails.expectedctc = app.getArgument('expectedctc');
+    companydetails.experience = app.getArgument('experience');
+    companydetails.companyname = app.getArgument('companyname');
+    companydetails.skills = app.getArgument('skills');
+    app.data.user.companydetails = companydetails;
+    let updates = {};
+    updates['/users/' + app.data.user.key + '/companydetails'] = companydetails;
+
+
+    database.ref().update(updates).then((msg) => {
+      console.log(msg);
+    }, (error) => {
+      console.log(error);
+    });
+    app.data.user.basicinfo = users[app.data.user.key].basicinfo;
+    app.data.user.companydetails = users[app.data.user.key].companydetails;
+    app.ask(app.buildRichResponse()
+      .addSimpleResponse('You need to upload documents to proceed.Please come back after uploading to check the status')
+      .addBasicCard(app.buildBasicCard(`
+    **Name** : ${app.data.user.basicinfo.givenname}    
+    **Phonennumber** : ${app.data.user.basicinfo.phonennumber}  
+    **Address** : ${app.data.user.basicinfo.address}  
+    **Date of Birth** : ${app.data.user.basicinfo.dob}    
+    **Current Company** : ${app.data.user.companydetails.companyname}     
+    **Current CTC** : ${app.data.user.companydetails.currentctc.amount} ${app.data.user.companydetails.currentctc.currency}  
+    **Expected CTC** : ${app.data.user.companydetails.expectedctc.amount} ${app.data.user.companydetails.expectedctc.currency}  
+    **Experience** : ${app.data.user.companydetails.experience} years   
+    **Skills** : ${app.data.user.companydetails.skills.toString()} 
+        `)
+        .setTitle('Profile')
+        .addButton('Upload the documents here')
+        .setImage(users[app.data.user.key].imageurl, 'Image alternate text')
+      ).addSuggestions(
+      ['change something', 'ok bye'])
+    );
+  }
+
+  function onBaoardingChange(app){
+      let context = app.getContext('onboarding_begin_change-followup');
+      context.parameters['given-name']='John';
+      app.setContext('onboarding_begin_change-followup', 1, context.parameters);
+      app.ask('what you wanna change');
+  }
+
 
 
   let actionMap = new Map();
@@ -237,6 +365,10 @@ exports.embothook = functions.https.onRequest((request, response) => {
   actionMap.set(TRANSACTION_CHECK_COMPLETE, transactionCheckComplete);
   actionMap.set(TRANSACTION_DECISION_COMPLETE, transactionDecisionComplete);
   actionMap.set(ADD_MORE_CONFIRM, addMoreConfirm);
+  actionMap.set(ONBOARDING_BEGIN, onBoardingBegin);
+  actionMap.set(ONBOARDING_BASICDETAILS, onBaoardingBasicInfo)
+  actionMap.set(ONBOARDING_COMPANYDETAILS, onBaoardingCompanyDetails)
+  actionMap.set(ONBOARDING_CHANGE, onBaoardingChange)
   app.handleRequest(actionMap);
 
 });
