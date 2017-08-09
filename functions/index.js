@@ -13,8 +13,10 @@ const ONBOARDING_BEGIN = 'onboarding.begin';
 const ONBOARDING_BASICDETAILS = 'onboarding.basicinfo';
 const ONBOARDING_COMPANYDETAILS = 'onboarding.companydetails';
 const ONBOARDING_CHANGE = 'onboarding.begin.change';
-
-const FOOD_SELECTED = 'thinking about lunch ah?';
+const ONBOARDING_VERIFY = 'onboarding.onboarding.verify';
+const ONBOARDING_VERIFY_YES = 'onboarding.verify.yes'
+const ONBOARDING_VERIFY_NO = 'onboarding.verify.no'
+const CREATE_ID_CARD = 'create.id.card'
 
 const App = require('actions-on-google').ApiAiApp;
 
@@ -44,18 +46,6 @@ firebase.initializeApp(config);
 const database = firebase.database();
 
 
-database.ref('lunchitems').once('value').then(function (snapshot) {
-  lunchvalues = snapshot.val();
-}, function (err) {
-  console.log(err);
-});
-
-
-database.ref('users').orderByChild("emailid").equalTo("raj.nagaraj1990@gmail.com").once('value').then(function (snapshot) {
-  users = snapshot.val();
-}, function (err) {
-  console.log(err);
-});
 
 
 
@@ -98,7 +88,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
   app.data.lunchdata = {};
   app.data.lunchdata.foodItems = {};
   app.data.user = {};
-  app.data.user.key = Object.keys(users)[0];
+
   console.log('Request headers: ' + JSON.stringify(request.headers));
   console.log('Request body: ' + JSON.stringify(request.body));
 
@@ -235,12 +225,29 @@ exports.embothook = functions.https.onRequest((request, response) => {
       app.data.displayName = app.getUserName().givenName;
       app.data.userId = app.getUser().userId;
       app.data.deviceCoordinates = app.getDeviceLocation().coordinates;
+      database.ref('lunchitems').once('value').then(function (snapshot) {
+        lunchvalues = snapshot.val();
+        database.ref('users').orderByChild("emailid").equalTo("raj.nagaraj1990@gmail.com").once('value').then(function (snapshot) {
+          users = snapshot.val();         
 
-      app.ask(app.buildRichResponse()
-        .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
-        .addSuggestions(
-        ['Book Lunch', 'Onboarding', 'Leave Management', 'True time'])
-      );
+          app.data.user.key = Object.keys(users)[0];
+          app.data.user.onboardinfo = users[app.data.user.key].onboardinfo;
+          if (users[app.data.user.key].status === 'ACTIVE') {
+            app.ask(app.buildRichResponse()
+              .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
+              .addSuggestions(
+              ['Book Lunch', 'Leave Management', 'True time']));
+          }else if (users[app.data.user.key].status === 'VERIFIED'){
+             app.ask(app.buildRichResponse()
+              .addSimpleResponse(`I am EM bot.Your verification is complete.All the best !!!`)
+              .addSuggestions(['Generate ID Card','Quit'],[`Hi ${app.data.displayName} welcome !!`]));
+          }else {
+            app.ask(app.buildRichResponse()
+              .addSimpleResponse(`I am EM bot.Please select onboarding to continue..`)
+              .addSuggestions(['onboarding','Quit'],[`Hi ${app.data.displayName} welcome !!`]));
+          }
+        });
+      });
     } else {
       app.tell('Ok Bye')
     }
@@ -250,30 +257,47 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
   function onBoardingBegin(app) {
 
-    if (users[app.data.user.key].status === 'UPLOAD') {
+    if (users[app.data.user.key].status === 'PREUPLOAD') {
       app.data.user.basicinfo = users[app.data.user.key].basicinfo;
       app.data.user.companydetails = users[app.data.user.key].companydetails;
       app.ask(app.buildRichResponse()
-        .addSimpleResponse('You need to upload documents to proceed.Please come back after uploading to check the status')
+        .addSimpleResponse(`Hi ${app.data.displayName},welcome to Cognizant family.You need to upload documents to proceed.Please come back after uploading to check the status`)
         .addBasicCard(app.buildBasicCard(`
-    **Name** : ${app.data.user.basicinfo.givenname}    
-    **Phonennumber** : ${app.data.user.basicinfo.phonennumber}  
-    **Address** : ${app.data.user.basicinfo.address}  
-    **Date of Birth** : ${app.data.user.basicinfo.dob}    
-    **Current Company** : ${app.data.user.companydetails.companyname}     
-    **Current CTC** : ${app.data.user.companydetails.currentctc.amount} ${app.data.user.companydetails.currentctc.currency}  
-    **Expected CTC** : ${app.data.user.companydetails.expectedctc.amount} ${app.data.user.companydetails.expectedctc.currency}  
-    **Experience** : ${app.data.user.companydetails.experience} years   
-    **Skills** : ${app.data.user.companydetails.skills.toString()} 
-        `)
+      **Name** : ${app.data.user.basicinfo.givenname}    
+      **Phonennumber** : ${app.data.user.basicinfo.phonennumber}  
+      **Address** : ${app.data.user.basicinfo.address}  
+      **Date of Birth** : ${app.data.user.basicinfo.dob}    
+      **Current Company** : ${app.data.user.companydetails.companyname}     
+      **Current CTC** : ${app.data.user.companydetails.currentctc.amount} ${app.data.user.companydetails.currentctc.currency}  
+      **Expected CTC** : ${app.data.user.companydetails.expectedctc.amount} ${app.data.user.companydetails.expectedctc.currency}  
+      **Experience** : ${app.data.user.companydetails.experience} years   
+      **Skills** : ${app.data.user.companydetails.skills.toString()} 
+          `)
           .setTitle('Profile')
           .addButton('Upload the documents here')
           .setImage(users[app.data.user.key].imageurl, 'Image alternate text')
         ).addSuggestions(
         ['change something', 'ok bye'])
       );
-           
-    
+    } else if (users[app.data.user.key].status === 'UPLOAD') {
+
+      app.ask(app.buildRichResponse()
+        .addSimpleResponse(`Hi ${app.data.displayName},welcome to cognizant family.Please verify the below information and upload documents to proceed.`)
+        .addBasicCard(app.buildBasicCard(`
+    Name : ${app.data.user.onboardinfo.name}    
+    Date of Joining : ${app.data.user.onboardinfo.doj}  
+    Office Location : ${app.data.user.onboardinfo.office}  
+    Designation : ${app.data.user.onboardinfo.designation}    
+    POC : ${app.data.user.onboardinfo.POC}    
+    BU : ${app.data.user.onboardinfo.BU}
+        `).setTitle('Profile').setImage(users[app.data.user.key].imageurl, 'Image alternate text').addButton('Upload the documents here', 'http://www.google.com')
+        ).addSuggestions(
+        ['Verify', 'Update something'])
+      );
+
+
+    } else if (users[app.data.user.key].status === 'VERIFIED') {
+      generateIdCard(app);
     } else {
 
       app.ask(`Hi ${app.data.displayName},welcome to cognizant family.I will help you with your on boarding process.Please provide your full name`);
@@ -347,14 +371,62 @@ exports.embothook = functions.https.onRequest((request, response) => {
     );
   }
 
-  function onBaoardingChange(app){
-      let context = app.getContext('onboarding_begin_change-followup');
-      context.parameters['given-name']='John';
-      app.setContext('onboarding_begin_change-followup', 1, context.parameters);
-      app.ask('what you wanna change');
+  function onBaoardingChange(app) {
+    let context = app.getContext('onboarding_begin_change-followup');
+    context.parameters['given-name'] = 'John';
+    app.setContext('onboarding_begin_change-followup', 1, context.parameters);
+    app.ask('what you wanna change');
   }
 
+  function onBoardingVerify(app) {
+    users[app.data.user.key].status='VERIFIED';
+    users[app.data.user.key].imageurl='https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2FPassportphoto.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
+    let updates = {};
+    updates['/users/' + app.data.user.key + '/status'] = 'VERIFIED';
+    updates['/users/' + app.data.user.key + '/imageurl'] = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2FPassportphoto.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
 
+
+    database.ref().update(updates).then((msg) => {
+      app.ask(`Thanks for verifying and uploading the documents.Your Joining date is on ${app.data.user.onboardinfo.doj}.Need help in booking travel tickets?`)
+    }, (error) => {
+      console.log(error);
+    });;
+
+  }
+
+  function onBoardingVerifyYes(app) {
+    app.ask(app.buildRichResponse()
+      .addSimpleResponse(`Please contact our travel desk - traveldesk@gmail.com.All the best for your first day at ${app.data.user.onboardinfo.office}.Your Location POC is ${app.data.user.onboardinfo.POC}`)
+      .addSuggestions(
+      ['Generate ID Card', 'Quit']))
+  }
+
+  function onBoardingVerifyNo(app) {
+    app.ask(app.buildRichResponse()
+      .addSimpleResponse(`Allright.All the best for your first day at ${app.data.user.onboardinfo.office}.Your Location POC is ${app.data.user.onboardinfo.POC}`)
+      .addSuggestions(
+      ['Generate ID Card', 'Quit']))
+  }
+
+  function generateIdCard(app) {
+    if (users[app.data.user.key].status === 'VERIFIED') {
+      app.ask(app.buildRichResponse()
+        .addSimpleResponse('Please show your ID card at the front gate')
+        .addBasicCard(app.buildBasicCard(`
+    Name : ${app.data.user.onboardinfo.name}    
+    Date of Joining : ${app.data.user.onboardinfo.doj}  
+    Office Location : ${app.data.user.onboardinfo.office}  
+    Designation : ${app.data.user.onboardinfo.designation}    
+    POC : ${app.data.user.onboardinfo.POC}    
+    BU : ${app.data.user.onboardinfo.BU}
+        `).setTitle('ID Card').setImage(users[app.data.user.key].imageurl, 'Image alternate text').addButton('Download the ID card here', 'http://www.google.com')
+        ).addSuggestions(
+        ['OK', 'email the card'])
+      );
+    } else {
+      app.tell('Your application is currently under progress.You can generate ID card after completion.');
+    }
+  }
 
   let actionMap = new Map();
   actionMap.set(INPUT_WELCOME, inputwelcome);
@@ -369,6 +441,13 @@ exports.embothook = functions.https.onRequest((request, response) => {
   actionMap.set(ONBOARDING_BASICDETAILS, onBaoardingBasicInfo)
   actionMap.set(ONBOARDING_COMPANYDETAILS, onBaoardingCompanyDetails)
   actionMap.set(ONBOARDING_CHANGE, onBaoardingChange)
+  actionMap.set(ONBOARDING_VERIFY, onBoardingVerify)
+  actionMap.set(ONBOARDING_VERIFY_YES, onBoardingVerifyYes)
+  actionMap.set(ONBOARDING_VERIFY_NO, onBoardingVerifyNo)
+  actionMap.set(CREATE_ID_CARD, generateIdCard)
+
+
+
   app.handleRequest(actionMap);
 
 });
