@@ -17,6 +17,9 @@ const ONBOARDING_VERIFY = 'onboarding.onboarding.verify';
 const ONBOARDING_VERIFY_YES = 'onboarding.verify.yes'
 const ONBOARDING_VERIFY_NO = 'onboarding.verify.no'
 const CREATE_ID_CARD = 'create.id.card'
+const ONBOARDING_CHANGE_SELECT = 'onboarding.change.select'
+const ONBOARDING_CHANGE_SELECT_CONFIRM = 'onboarding.change.select.confirm'
+
 
 const App = require('actions-on-google').ApiAiApp;
 
@@ -216,8 +219,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
   function inputwelcome(app) {
     let namePermission = app.SupportedPermissions.NAME;
     let preciseLocationPermission = app.SupportedPermissions.DEVICE_PRECISE_LOCATION
-    app.askForPermissions('To address you by name and know your location',
-      [namePermission, preciseLocationPermission]);
+    app.askForPermissions('To address you by name and know your location',[namePermission, preciseLocationPermission]);
   }
 
   function permgranted(app) {
@@ -228,7 +230,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
       database.ref('lunchitems').once('value').then(function (snapshot) {
         lunchvalues = snapshot.val();
         database.ref('users').orderByChild("emailid").equalTo("raj.nagaraj1990@gmail.com").once('value').then(function (snapshot) {
-          users = snapshot.val();         
+          users = snapshot.val();
 
           app.data.user.key = Object.keys(users)[0];
           app.data.user.onboardinfo = users[app.data.user.key].onboardinfo;
@@ -237,14 +239,14 @@ exports.embothook = functions.https.onRequest((request, response) => {
               .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
               .addSuggestions(
               ['Book Lunch', 'Leave Management', 'True time']));
-          }else if (users[app.data.user.key].status === 'VERIFIED'){
-             app.ask(app.buildRichResponse()
+          } else if (users[app.data.user.key].status === 'VERIFIED') {
+            app.ask(app.buildRichResponse()
               .addSimpleResponse(`I am EM bot.Your verification is complete.All the best !!!`)
-              .addSuggestions(['Generate ID Card','Quit'],[`Hi ${app.data.displayName} welcome !!`]));
-          }else {
+              .addSuggestions(['Generate ID Card', 'Quit'], [`Hi ${app.data.displayName} welcome !!`]));
+          } else {
             app.ask(app.buildRichResponse()
               .addSimpleResponse(`I am EM bot.Please select onboarding to continue..`)
-              .addSuggestions(['onboarding','Quit'],[`Hi ${app.data.displayName} welcome !!`]));
+              .addSuggestions(['onboarding', 'Quit'], [`Hi ${app.data.displayName} welcome !!`]));
           }
         });
       });
@@ -284,7 +286,11 @@ exports.embothook = functions.https.onRequest((request, response) => {
       app.ask(app.buildRichResponse()
         .addSimpleResponse(`Hi ${app.data.displayName},welcome to cognizant family.Please verify the below information and upload documents to proceed.`)
         .addBasicCard(app.buildBasicCard(`
-    Name : ${app.data.user.onboardinfo.name}    
+    Name : ${app.data.user.onboardinfo.name}  
+    Dob : ${app.data.user.onboardinfo.dob}  
+    Address : ${app.data.user.onboardinfo.address} 
+    Phone Number:  ${app.data.user.onboardinfo.phonenumber}  
+    Experience:  ${app.data.user.onboardinfo.experience}  
     Date of Joining : ${app.data.user.onboardinfo.doj}  
     Office Location : ${app.data.user.onboardinfo.office}  
     Designation : ${app.data.user.onboardinfo.designation}    
@@ -372,15 +378,14 @@ exports.embothook = functions.https.onRequest((request, response) => {
   }
 
   function onBaoardingChange(app) {
-    let context = app.getContext('onboarding_begin_change-followup');
-    context.parameters['given-name'] = 'John';
-    app.setContext('onboarding_begin_change-followup', 1, context.parameters);
-    app.ask('what you wanna change');
+    app.ask(app.buildRichResponse()
+      .addSimpleResponse(`what you want to change`)
+      .addSuggestions(['name', 'experience', 'dob', 'address', 'phonenumber']));
   }
 
   function onBoardingVerify(app) {
-    users[app.data.user.key].status='VERIFIED';
-    users[app.data.user.key].imageurl='https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2FPassportphoto.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
+    users[app.data.user.key].status = 'VERIFIED';
+    users[app.data.user.key].imageurl = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2FPassportphoto.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
     let updates = {};
     updates['/users/' + app.data.user.key + '/status'] = 'VERIFIED';
     updates['/users/' + app.data.user.key + '/imageurl'] = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2FPassportphoto.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
@@ -413,7 +418,10 @@ exports.embothook = functions.https.onRequest((request, response) => {
       app.ask(app.buildRichResponse()
         .addSimpleResponse('Please show your ID card at the front gate')
         .addBasicCard(app.buildBasicCard(`
-    Name : ${app.data.user.onboardinfo.name}    
+    Name : ${app.data.user.onboardinfo.name}  
+    Dob : ${app.data.user.onboardinfo.dob}  
+    Address : ${app.data.user.onboardinfo.address}  
+    Experience:  ${app.data.user.onboardinfo.experience}  
     Date of Joining : ${app.data.user.onboardinfo.doj}  
     Office Location : ${app.data.user.onboardinfo.office}  
     Designation : ${app.data.user.onboardinfo.designation}    
@@ -426,6 +434,39 @@ exports.embothook = functions.https.onRequest((request, response) => {
     } else {
       app.tell('Your application is currently under progress.You can generate ID card after completion.');
     }
+  }
+
+  function onboardchangeselect(app) {
+    let fields = app.getArgument('onboardfields');
+    let context = app.getContext('onboarding_change_select-followup');
+    Object.keys(app.data.user.onboardinfo).forEach(function (field) {
+      if (fields.indexOf(field) == -1)
+        context.parameters[field] = app.data.user.onboardinfo[field];
+    })
+    app.setContext('onboarding_change_select-followup', 1, context.parameters);
+    app.ask('These are sensitive information.Are you sure you want to update?');
+
+  }
+
+  function onboardchangeselectconfirm(app) {
+    let context = app.getContext('onboarding_change_select-followup');
+    let params = context.parameters;
+    for (var attrname in app.data.user.onboardinfo) { 
+      app.data.user.onboardinfo[attrname] = params[attrname]; 
+    }
+    let retobj=Object.assign({},app.data.user.onboardinfo);
+    let updates = {};
+    updates['/users/' + app.data.user.key + '/onboardinfo'] = retobj;
+
+
+    database.ref().update(updates).then((msg) => {
+      console.log(msg);
+      app.setContext('onboarding_begin-followup', 1);
+      onBoardingBegin(app);
+    }, (error) => {
+      console.log(error);
+    });
+
   }
 
   let actionMap = new Map();
@@ -445,6 +486,9 @@ exports.embothook = functions.https.onRequest((request, response) => {
   actionMap.set(ONBOARDING_VERIFY_YES, onBoardingVerifyYes)
   actionMap.set(ONBOARDING_VERIFY_NO, onBoardingVerifyNo)
   actionMap.set(CREATE_ID_CARD, generateIdCard)
+  actionMap.set(ONBOARDING_CHANGE_SELECT, onboardchangeselect)
+  actionMap.set(ONBOARDING_CHANGE_SELECT_CONFIRM, onboardchangeselectconfirm)
+
 
 
 
