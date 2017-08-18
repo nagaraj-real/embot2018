@@ -244,11 +244,11 @@ exports.embothook = functions.https.onRequest((request, response) => {
            activePrompt(app);
           } else if (users[app.data.user.key].status === 'VERIFIED') {
             app.ask(app.buildRichResponse()
-              .addSimpleResponse(`I am EM bot.Your verification is complete.All the best !!!`)
+              .addSimpleResponse(`I am EA bot.Your verification is complete.All the best !!!`)
               .addSuggestions(['Generate ID Card', 'Quit'], [`Hi ${app.data.displayName} welcome !!`]));
           } else {
             app.ask(app.buildRichResponse()
-              .addSimpleResponse(`I am EM bot.Please select onboarding to continue..`)
+              .addSimpleResponse(`I am EA bot.Please select onboarding to continue..`)
               .addSuggestions(['onboarding', 'Quit'], [`Hi ${app.data.displayName} welcome !!`]));
           }
         });
@@ -486,7 +486,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
   function activePrompt(app){
      app.ask(app.buildRichResponse()
-              .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
+              .addSimpleResponse(`Hello ${app.data.displayName}, I am EA bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
               .addSuggestions(
               ['Book Lunch']));
   }
