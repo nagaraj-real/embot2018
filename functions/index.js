@@ -389,10 +389,10 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
   function onBoardingVerify(app) {
     users[app.data.user.key].status = 'VERIFIED';
-    users[app.data.user.key].imageurl = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2FPassportphoto.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
+    users[app.data.user.key].imageurl = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2Fprofilepic.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
     let updates = {};
     updates['/users/' + app.data.user.key + '/status'] = 'VERIFIED';
-    updates['/users/' + app.data.user.key + '/imageurl'] = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2FPassportphoto.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
+    updates['/users/' + app.data.user.key + '/imageurl'] = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2Fprofilepic.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
 
 
     database.ref().update(updates).then((msg) => {
@@ -494,7 +494,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
   function embotUserReset(app){
     let updates = {};
     updates['/users/' + app.data.user.key + '/status'] = 'UPLOAD';
-
+     updates['/users/' + app.data.user.key + '/imageurl'] = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2Fpersonplaceholder.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
 
     database.ref().update(updates).then((msg) => {
       console.log(msg);
