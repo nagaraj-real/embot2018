@@ -493,12 +493,14 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
   function embotUserReset(app){
     let updates = {};
+    users[app.data.user.key].status = 'UPLOAD';
+    users[app.data.user.key].imageurl = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2Fpersonplaceholder.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
+
     updates['/users/' + app.data.user.key + '/status'] = 'UPLOAD';
-     updates['/users/' + app.data.user.key + '/imageurl'] = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2Fpersonplaceholder.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
+    updates['/users/' + app.data.user.key + '/imageurl'] = 'https://firebasestorage.googleapis.com/v0/b/embot-5c0ae.appspot.com/o/user%2Fpersonplaceholder.jpg?alt=media&token=f2adcf7d-c0f6-418f-b032-6d7091941e0d';
 
     database.ref().update(updates).then((msg) => {
       console.log(msg);
-      users[app.data.user.key].status='UPLOAD';
       app.setContext('onboarding_begin-followup', 1);
       onBoardingBegin(app);
     }, (error) => {
