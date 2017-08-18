@@ -19,6 +19,12 @@ const ONBOARDING_VERIFY_NO = 'onboarding.verify.no'
 const CREATE_ID_CARD = 'create.id.card'
 const ONBOARDING_CHANGE_SELECT = 'onboarding.change.select'
 const ONBOARDING_CHANGE_SELECT_CONFIRM = 'onboarding.change.select.confirm'
+const ONBOARDING_VERIFY_ACTIVE = 'onboarding.verify.active'
+const EMBOT_USER_RESET = 'embot.user.reset'
+const EMBOT_MAIN_MENU = 'embot.main.menu'
+
+
+
 
 
 const App = require('actions-on-google').ApiAiApp;
@@ -235,10 +241,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
           app.data.user.key = Object.keys(users)[0];
           app.data.user.onboardinfo = users[app.data.user.key].onboardinfo;
           if (users[app.data.user.key].status === 'ACTIVE') {
-            app.ask(app.buildRichResponse()
-              .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
-              .addSuggestions(
-              ['Book Lunch', 'Leave Management', 'True time']));
+           activePrompt(app);
           } else if (users[app.data.user.key].status === 'VERIFIED') {
             app.ask(app.buildRichResponse()
               .addSimpleResponse(`I am EM bot.Your verification is complete.All the best !!!`)
@@ -275,7 +278,7 @@ exports.embothook = functions.https.onRequest((request, response) => {
       **Experience** : ${app.data.user.companydetails.experience} years   
       **Skills** : ${app.data.user.companydetails.skills.toString()} 
           `)
-          .setTitle('Profile')
+          .setTitle(' Profile')
           .addButton('Upload the documents here')
           .setImage(users[app.data.user.key].imageurl, 'Image alternate text')
         ).addSuggestions(
@@ -285,18 +288,17 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
       app.ask(app.buildRichResponse()
         .addSimpleResponse(`Hi ${app.data.displayName},welcome to cognizant family.Please verify the below information and upload documents to proceed.`)
-        .addBasicCard(app.buildBasicCard(`
-    Name : ${app.data.user.onboardinfo.name}  
-    Dob : ${app.data.user.onboardinfo.dob}  
-    Address : ${app.data.user.onboardinfo.address} 
-    Phone Number:  ${app.data.user.onboardinfo.phonenumber}  
-    Experience:  ${app.data.user.onboardinfo.experience}  
-    Date of Joining : ${app.data.user.onboardinfo.doj}  
-    Office Location : ${app.data.user.onboardinfo.office}  
-    Designation : ${app.data.user.onboardinfo.designation}    
-    POC : ${app.data.user.onboardinfo.POC}    
-    BU : ${app.data.user.onboardinfo.BU}
-        `).setTitle('Profile').setImage(users[app.data.user.key].imageurl, 'Image alternate text').addButton('Upload the documents here', 'http://www.google.com')
+        .addBasicCard(app.buildBasicCard(`**Name** : ${app.data.user.onboardinfo.name}    
+**Dob** : ${app.data.user.onboardinfo.dob}  
+**Address** : ${app.data.user.onboardinfo.address}   
+**Phone Number**:  ${app.data.user.onboardinfo.phonenumber}  
+**Experience**:  ${app.data.user.onboardinfo.experience} years   
+**Date of Joining** : ${app.data.user.onboardinfo.doj}  
+**Office Location** : ${app.data.user.onboardinfo.office}  
+**Designation** : ${app.data.user.onboardinfo.designation}    
+**POC** : ${app.data.user.onboardinfo.POC}    
+**BU** : ${app.data.user.onboardinfo.BU}
+        `).setTitle('Profile').setImage(users[app.data.user.key].imageurl, 'Image alternate text').addButton('Upload the documents here', 'https://onecognizant.cognizant.com/')
         ).addSuggestions(
         ['Verify', 'Update something'])
       );
@@ -304,6 +306,8 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
     } else if (users[app.data.user.key].status === 'VERIFIED') {
       generateIdCard(app);
+    } else if(users[app.data.user.key].status === 'ACTIVE'){
+      activePrompt(app);
     } else {
 
       app.ask(`Hi ${app.data.displayName},welcome to cognizant family.I will help you with your on boarding process.Please provide your full name`);
@@ -415,21 +419,18 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
   function generateIdCard(app) {
     if (users[app.data.user.key].status === 'VERIFIED') {
+      app.setContext('onboarding_begin_verify_active',5);
       app.ask(app.buildRichResponse()
         .addSimpleResponse('Please show your ID card at the front gate')
-        .addBasicCard(app.buildBasicCard(`
-    Name : ${app.data.user.onboardinfo.name}  
-    Dob : ${app.data.user.onboardinfo.dob}  
-    Address : ${app.data.user.onboardinfo.address}  
-    Experience:  ${app.data.user.onboardinfo.experience}  
-    Date of Joining : ${app.data.user.onboardinfo.doj}  
-    Office Location : ${app.data.user.onboardinfo.office}  
-    Designation : ${app.data.user.onboardinfo.designation}    
-    POC : ${app.data.user.onboardinfo.POC}    
-    BU : ${app.data.user.onboardinfo.BU}
-        `).setTitle('ID Card').setImage(users[app.data.user.key].imageurl, 'Image alternate text').addButton('Download the ID card here', 'http://www.google.com')
+        .addBasicCard(app.buildBasicCard(`**Name** : ${app.data.user.onboardinfo.name}    
+**Dob** : ${app.data.user.onboardinfo.dob}  
+**Address** : ${app.data.user.onboardinfo.address}   
+**Phone Number**:  ${app.data.user.onboardinfo.phonenumber}   
+**Office Location** : ${app.data.user.onboardinfo.office}  
+**Designation** : ${app.data.user.onboardinfo.designation}    
+**BU** : ${app.data.user.onboardinfo.BU}`).setTitle('ID Card').setImage(users[app.data.user.key].imageurl, 'Image alternate text').addButton('Download the ID card here', 'https://onecognizant.cognizant.com/')
         ).addSuggestions(
-        ['OK', 'email the card'])
+        ['Quit','Joined the company'])
       );
     } else {
       app.tell('Your application is currently under progress.You can generate ID card after completion.');
@@ -469,6 +470,47 @@ exports.embothook = functions.https.onRequest((request, response) => {
 
   }
 
+  function onboardingVerifyActive(app){
+    let updates = {};
+    updates['/users/' + app.data.user.key + '/status'] = 'ACTIVE';
+
+
+    database.ref().update(updates).then((msg) => {
+      console.log(msg);
+      users[app.data.user.key].status='ACTIVE';
+      activePrompt(app);
+    }, (error) => {
+      console.log(error);
+    });
+  }
+
+  function activePrompt(app){
+     app.ask(app.buildRichResponse()
+              .addSimpleResponse(`Hello ${app.data.displayName}, I am EM bot.What can I help you with?`, [`Hi ${app.data.displayName} welcome !!`])
+              .addSuggestions(
+              ['Book Lunch']));
+  }
+
+  function embotUserReset(app){
+    let updates = {};
+    updates['/users/' + app.data.user.key + '/status'] = 'UPLOAD';
+
+
+    database.ref().update(updates).then((msg) => {
+      console.log(msg);
+      users[app.data.user.key].status='UPLOAD';
+      app.setContext('onboarding_begin-followup', 1);
+      onBoardingBegin(app);
+    }, (error) => {
+      console.log(error);
+    });
+  }
+
+  function embotMainMenu(app){
+    app.setContext('onboarding_begin-followup', 1);
+    onBoardingBegin(app);
+  }
+
   let actionMap = new Map();
   actionMap.set(INPUT_WELCOME, inputwelcome);
   actionMap.set(PERMISSION_GRANTED, permgranted);
@@ -488,6 +530,9 @@ exports.embothook = functions.https.onRequest((request, response) => {
   actionMap.set(CREATE_ID_CARD, generateIdCard)
   actionMap.set(ONBOARDING_CHANGE_SELECT, onboardchangeselect)
   actionMap.set(ONBOARDING_CHANGE_SELECT_CONFIRM, onboardchangeselectconfirm)
+  actionMap.set(ONBOARDING_VERIFY_ACTIVE, onboardingVerifyActive)
+  actionMap.set(EMBOT_USER_RESET,embotUserReset)
+  actionMap.set(EMBOT_MAIN_MENU,embotMainMenu)
 
 
 
